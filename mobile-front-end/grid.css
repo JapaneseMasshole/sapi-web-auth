@@ -1,0 +1,85 @@
+* {
+    font-family: "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  }
+  body {
+    overflow-y: scroll;
+  
+    margin: 0;
+  
+    background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='138' height='81' viewBox='0 0 138 81'%3E%3Cpath fill='none' stroke='%23FFF' stroke-linecap='square' d='M0 40.98L69 0m0 0v81M0 40.98l69 40m0 0l69-40M69 0l69 40.98' opacity='.28'/%3E%3C/svg%3E");
+    background-repeat: repeat;
+    background-color: black;
+  }
+  header {
+    background-color: black;
+    margin-bottom: 20px;
+  }
+  .title {
+    margin: 0;
+    padding: 10px;
+    padding-bottom: 15px;
+    color: white;
+    margin-left: 20px;
+    font-weight: bold;
+    font-size: 30px;
+  }
+
+  .main-tables {
+    margin: 0 auto;
+  }
+
+  .main-tables > .table {
+    width: 48%;
+    display: inline-block;
+  }
+
+  .main-tables > *:first-child {
+    margin-right: 2%;
+    margin-left: 1.5%;
+  }
+
+
+  .table .row,.header-row {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(10%, 1fr));
+    height: 50px;
+  }
+
+  .table .ticked {
+    text-decoration: underline !important;
+    background-color: lightgoldenrodyellow !important;
+  }
+
+  .table .header-row {
+    font-weight: bold;
+    background-color: grey;
+  }
+
+  .table .row-item {
+    border-top: black solid 1px;
+    border-left: black solid 1px;
+    line-height: 50px;
+    vertical-align: middle;
+    padding-left: 8px;
+    font-size: 14px;
+  }
+
+  .table .header-row .row-item {
+    font-size: 20px;
+  }
+
+  .table .row-item:last-child {
+    border-right: black solid 1px;
+  }
+
+  .table .row:last-child {
+    border-bottom: black solid 1px;
+  }
+
+  .table .row:nth-child(even) {
+      background-color: white;
+  }
+
+  .table .row:nth-child(odd) {
+    background-color: lightgrey;
+}

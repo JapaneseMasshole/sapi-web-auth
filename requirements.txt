@@ -1,0 +1,8 @@
+blpapi
+aiohttp
+fastapi==0.109.0
+uvicorn==0.27.0.post1
+PyYAML==6.0.1
+blpapi==3.23.1
+requests==2.31.0
+python-dotenv==1.0.1

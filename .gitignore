@@ -1,0 +1,8 @@
+.idea
+.vscode
+.venv
+*/__pycache__
+*/*/__pycache__
+auth_server/bpipe/config.yml
+auth_server/bpipe/*.pk12
+auth_server/bpipe/*.pk7

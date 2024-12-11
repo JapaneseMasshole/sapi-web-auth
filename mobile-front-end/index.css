@@ -1,0 +1,53 @@
+* {
+  font-family: "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+}
+body {
+  overflow-y: scroll;
+
+  margin: 0;
+
+  background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='138' height='81' viewBox='0 0 138 81'%3E%3Cpath fill='none' stroke='%23FFF' stroke-linecap='square' d='M0 40.98L69 0m0 0v81M0 40.98l69 40m0 0l69-40M69 0l69 40.98' opacity='.28'/%3E%3C/svg%3E");
+  background-repeat: repeat;
+  background-color: black;
+}
+header {
+  background-color: black;
+}
+.title {
+  margin: 0;
+  padding: 10px;
+  padding-bottom: 15px;
+  color: white;
+  margin-left: 20px;
+  font-weight: bold;
+  font-size: 30px;
+}
+
+.wrapper {
+  display: grid;
+  align-items: center;
+}
+
+.content {
+  display: grid;
+  grid-template-columns: 350px 450px;
+  column-gap: 8%;
+
+  margin: 7% auto;
+}
+
+#placeholder {
+  height: 200px;
+  background-color: black;
+  color: white;
+}
+
+#placeholder .your-content {
+  margin: 20px;
+  font-size: 30px;
+}
+
+#placeholder .ipsum {
+  margin: 20px;
+  font-size: 12px;
+}

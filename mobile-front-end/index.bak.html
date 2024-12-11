@@ -1,0 +1,113 @@
+<html>
+<meta charset="utf-8" />
+<link rel="icon" href="data:," />
+
+<head>
+    <title>Tutorial App</title>
+    <link rel="stylesheet" href="index.css">
+    </style>
+	
+	<script type="module">
+	
+import { JwtFetcher } from "./jwt-fetcher.js";
+
+	// define utility functions
+function generateRandomString(length) {
+  const array = new Uint32Array(length);
+  window.crypto.getRandomValues(array);
+  return Array.from(array, (uint32) => ('0' + uint32.toString(16)).substr(-1)).join('');
+}
+
+function sha256(str){
+  const encoder = new TextEncoder();
+  const data = encoder.encode(str);
+  return window.crypto.subtle.digest('SHA-256', data);
+}
+
+function base64urlencode(hashBuf) {
+  const array = new Uint8Array(hashBuf);
+  const ascii = btoa(String.fromCharCode(...array));
+  return ascii
+    .replace(/\+/g, '-')
+    .replace(/\//g, '_')
+    .replace(/=+$/, '');
+}// end utility functions
+
+async function redirect(tokenFromRedirectUrl) {
+	// the verifier is very important, we will need to hold on to it
+    // after the redirect to verify our identiy as per the PKCE workflow
+    const codeVerifier = generateRandomString(43);
+    // stash for later use
+    sessionStorage.setItem('pkceVerifier', codeVerifier);
+
+
+    // hash the verifier via SHA-256, the algorithm we specify  below as our code_challenge_method
+    const challengeHash = base64urlencode(await sha256(codeVerifier));
+	
+    const params = {
+        client_id: 'se-mobile-app',
+        code_challenge: challengeHash,
+        code_challenge_method: 'S256',
+        response_type: 'code',
+        redirect_uri: encodeURI('http://localhost:8080'),
+        scope: 'sapi blpapi-eps',
+        adapter: 'token',
+        ssotoken: tokenFromRedirectUrl
+    };
+
+    const base = 'https://bsso.blpprofessional.com/as/authorization.oauth2';
+    const bssoUrl = base + '?' + new URLSearchParams(params).toString();
+
+    // force redirect based on our BSSO URL.
+    // if the values we provided are valid, we will be directed
+    // to our portal page
+    window.location.replace(bssoUrl);
+}
+
+async function main() {
+    // retrieve the value of whatever the ACTUAL_TOKEN_REDACTED was
+    const tokenFromRedirectUrl = new URLSearchParams(window.location.hash).get('#token');
+	
+    if (tokenFromRedirectUrl) {
+		// if we have #token, we are ready for redirect
+		redirect(tokenFromRedirectUrl);
+	} else {
+		const code = new URLSearchParams(window.location.search).get("code");
+		
+		if (code) {
+			// fetch the tokenconst tokenFetcher = new JwtFetcher();
+			const tokenFetcher = new JwtFetcher();
+			const activeToken = await tokenFetcher.getActiveToken();
+			
+			// once we have the token fetched and saved to the session storage we can continue to the portal
+			window.location.replace('http://localhost:8080/portal.html');
+		}
+	}
+	
+	// it's either login page or we have error
+}
+
+main();
+	</script>
+</head>
+
+<body>
+    <header>
+        <p class="title">Bloomberg Demo: Third Party App</p>
+    </header>
+
+    <div class="wrapper">
+        <div class="content">
+            <div id="placeholder">
+                <p class="your-content">Your content here!</p>
+                <p class="ipsum">Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor
+                    incididunt ut labore et dolore magna aliqua</p>
+            </div>
+
+            <iframe width="450px" height="400" src="iframe.html?app=EXCELLENT_BSSO_TEST_ID" frameborder="0" scrolling="no"></iframe>
+
+        </div>
+    </div>
+</body>
+
+</html>

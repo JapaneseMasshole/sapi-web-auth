@@ -1,0 +1,63 @@
+* {
+    font-family: "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  }
+  body {
+    margin: 0;
+  }
+
+  
+  .login-area {
+    height: 450px;
+    background-color: black;
+    color: white;
+  }
+  
+  .login-area .description {
+    margin: 20px;
+    margin-bottom: 12px;
+    font-size: 26px;
+  }
+  
+  .login-area .learn {
+    margin: 20px;
+    color: rgb(102, 171, 255);
+    font-size: 14px;
+  }
+  
+  .login-area .login-button {
+    margin: 20px;
+    margin-top: 50px;
+  
+    display: inline-block;
+  
+    background-color: rgb(0, 115, 255);
+    border-color: rgb(0, 115, 255);
+    border-style: solid;
+    border-width: 1px;
+    color: rgb(248, 248, 250);
+  
+    cursor: pointer;
+    font-size: 16px;
+    font-weight: 600;
+    height: 24px;
+    padding: 9px 20px;
+    text-transform: uppercase;
+    text-decoration: none;
+  }
+  
+  .login-area .no-access {
+    margin: 20px;
+    padding-top: 100px;
+  }
+  
+  .login-area .no-access * {
+    display: inline;
+    margin-right: 5px;
+    font-size: 14px;
+  }
+  
+  .login-area .register-here {
+    color: rgb(102, 171, 255);
+    font-size: 14px;
+  }
+  

@@ -1,0 +1,376 @@
+<html>
+  <meta charset="utf-8" />
+  <link rel="icon" href="data:," />
+  <head>
+    <title>Tutorial App</title>
+    <link rel="stylesheet" href="grid.css" />
+  </head>
+  
+	<body>
+	  <header>
+		<p class="title">Bloomberg Demo: Third Party App</p>
+	  </header>
+
+	  <div class="data-display-area">
+		<div class="main-tables">
+		  <!-- leaders-table inserted here -->
+		  <!-- laggers-table inserted here -->
+		</div>
+	  </div>
+	</body>
+	
+	<script>
+
+// JWTFetcher Start
+class JwtFetcher {
+  constructor() {
+    this.accessToken = null;
+    this.refreshToken = sessionStorage.getItem("sso-token") || null;
+
+    this.expirationTimestamp = sessionStorage.getItem("sso-expire") || null;
+  }
+
+  getActiveToken() {
+    if (!this.accessToken && !this.refreshToken) {
+      return this.createTokenFromRedirectCode();
+    }
+
+    if (this.accessToken && !this.isExpired()) {
+      return Promise.resolve(this.accessToken);
+    }
+
+    // since values are expired, we can clear stale token data
+    sessionStorage.removeItem("sso-token");
+    sessionStorage.removeItem("sso-expire");
+
+    return this.regenerateToken();
+  }
+
+  async createTokenFromRedirectCode() {
+    const code = new URLSearchParams(window.location.search).get("code");
+    if (!code) {
+      throw Error("Cannot create token if no redirect code is present!");
+    }
+
+    // Once we have our code, we need to retrieve the code verifier that we had saved from the previous
+    // redirect.html file.
+    const codeVerifier = sessionStorage.getItem("pkceVerifier");
+    sessionStorage.removeItem("pkceVerifier");
+
+    const body = new URLSearchParams();
+    body.append("grant_type", "authorization_code");
+    body.append("code", code);
+    body.append("code_verifier", codeVerifier);
+    body.append("client_id", "se-mobile-app");
+    body.append("redirect_uri", encodeURI("http://localhost:8080"));
+
+    const rawResponse = await fetch(
+      "https://bsso.blpprofessional.com/as/token.oauth2",
+      {
+        method: "POST",
+        mode: "cors",
+        body,
+      }
+    );
+
+    return this._handleTokenResponse(rawResponse);
+  }
+
+  async regenerateToken() {
+    const body = new URLSearchParams();
+    body.append("grant_type", "refresh_token");
+    body.append("refresh_token", this.refreshToken);
+    body.append("client_id", "se-mobile-app");
+
+    // because we are getting new tokens, clear the currently
+    // existing ones from memory
+    this.accessToken = null;
+    this.refreshToken = null;
+
+    const response = await fetch(
+      "https://bsso.blpprofessional.com/as/token.oauth2",
+      {
+        method: "POST",
+        mode: "cors",
+        body,
+      }
+    );
+
+    return this._handleTokenResponse(response);
+  }
+
+  async _handleTokenResponse(fetchResponse) {
+    const regenerated = await fetchResponse.json();
+    if (regenerated.error) {
+      throw Error(regenerated.error);
+    }
+
+    this.accessToken = regenerated.access_token;
+    this.refreshToken = regenerated.refresh_token;
+    this.expirationTimestamp =
+      new Date().getTime() / 1000 + regenerated.expires_in;
+
+    /* The below oauthResponse matches the following TypeScript-style interface
+        interface OAuthToken {
+          access_token: string;
+          refresh_token: string;
+          token_type: string;
+          expires_in?: number;
+        }
+      */
+
+    sessionStorage.setItem("sso-token", this.refreshToken);
+    sessionStorage.setItem("sso-expire", this.expirationTimestamp);
+
+    return this.accessToken;
+  }
+
+  isExpired() {
+    const current = new Date().getTime() / 1000;
+    return current > this.expirationTimestamp;
+  }
+}
+
+// JWTFetcher End
+
+// =================================
+
+// Grid Start
+class GridControl {
+  constructor(indexes, currency) {
+    TableManipulator.initialize();
+
+    // at first, provide initial blank values for indexes and currency
+    const emptyValueFunc = (acc, cur) => {
+      acc[cur] = {
+        price: "N/A",
+        marketTime: "N/A",
+        netChange: "N/A",
+        percentChange: "N/A",
+      };
+      return acc;
+    };
+
+    this._data = {
+      indexes: indexes.reduce(emptyValueFunc, {}),
+      currency: currency.reduce(emptyValueFunc, {}),
+    };
+
+    this.onUpdate(this._data);
+  }
+
+  onUpdate(update) {
+    const { indexes, currency } = update;
+
+    if (Object.keys(indexes).length > 0) {
+      this._updateIndexes(indexes);
+    }
+
+    if (Object.keys(currency).length > 0) {
+      this._updateCurrencies(currency);
+    }
+  }
+
+  _updateIndexes(indexes) {
+    const sortedData = this._reconcileData("indexes", indexes);
+    TableManipulator.updateTable("indexes-table", sortedData);
+  }
+
+  _updateCurrencies(currencies) {
+    const sortedData = this._reconcileData("currency", currencies);
+    TableManipulator.updateTable("currency-table", sortedData);
+  }
+
+  // add/remove, then sort and set
+  _reconcileData(name, membersChanged) {
+    const curData = this._data[name];
+
+    Object.keys(membersChanged).map((ticker) => {
+      const ticketUpdateData = membersChanged[ticker];
+      curData[ticker] = ticketUpdateData;
+    });
+
+    const newData = this._data[name];
+
+    // using some kind of auto-sorted dataset instead of sorting on every update
+    // can be more efficient on large data sets, doing this for simplicity
+    const table = Object.keys(newData).map((key) => {
+      return { name: key, ...newData[key] };
+    });
+
+    table.sort((a, b) => {
+      if (a.percentChange === "N/A") {
+        return true;
+      } else if (b.percentChange === "N/A") {
+        return false;
+      }
+
+      return Math.abs(a.percentChange) < Math.abs(b.percentChange);
+    });
+
+    return table;
+  }
+}
+
+class TableManipulator {
+  static initialize() {
+    const blankRow = Array(5).fill("");
+    const blankRows = Array(5).fill(blankRow);
+
+    const leadersTable = this._createTable([
+      ["Index", "Price", "Market Time", "Net Change", "% Change"],
+      ...blankRows,
+    ]);
+
+    leadersTable.className = "table indexes-table";
+    document.querySelector(".main-tables").appendChild(leadersTable);
+
+    const laggersTable = this._createTable([
+      ["Currency", "Price", "Market Time", "Net Change", "% Change"],
+      ...blankRows,
+    ]);
+
+    laggersTable.className = "table currency-table";
+    document.querySelector(".main-tables").appendChild(laggersTable);
+  }
+
+  // in reality, updating the only changed rows is more efficient,
+  // but for simplicity, we will just provide entire table matrix
+  static updateTable(tableClassName, data) {
+    const table = document.getElementsByClassName(tableClassName)[0];
+
+    const htmlRows = table.getElementsByClassName("row");
+    for (let i = 0; i < htmlRows.length; ++i) {
+      const htmlRow = htmlRows[i];
+      const htmlRowEls = htmlRow.getElementsByClassName("row-item");
+
+      const dataRow = this._objToRow(data[i]);
+
+      // naive check to see if data row was updated
+      let dataRowChanged = false;
+
+      for (let j = 0; j < htmlRowEls.length; ++j) {
+        const htmlRowEl = htmlRowEls[j];
+        const curText = htmlRowEl.innerText;
+
+        if (curText !== dataRow[j].toString()) {
+          htmlRowEl.innerText = dataRow[j];
+
+          // do not set on initial update
+          if (curText !== "") {
+            dataRowChanged = true;
+          }
+        }
+      }
+
+      if (dataRowChanged) {
+        htmlRow.className = htmlRow.className + " ticked";
+        setTimeout(() => {
+          htmlRow.className = htmlRow.className.replace("ticked", "");
+        }, 1000);
+      }
+    }
+  }
+
+  static _createTable(matrix) {
+    const table = document.createElement("div");
+
+    const headerRowData = matrix[0];
+    const dataRows = matrix.slice(1);
+
+    const headerRow = document.createElement("div");
+    headerRow.className = "header-row";
+
+    for (const colName of headerRowData) {
+      const item = document.createElement("div");
+      item.className = "row-item";
+      headerRow.appendChild(item);
+      item.innerText = colName;
+    }
+
+    table.appendChild(headerRow);
+
+    for (const data of dataRows) {
+      const row = document.createElement("div");
+      row.className = "row";
+
+      for (const itemData of data) {
+        const item = document.createElement("div");
+        item.className = "row-item";
+        row.appendChild(item);
+        item.innerText = itemData;
+      }
+
+      table.appendChild(row);
+    }
+
+    return table;
+  }
+
+  static _objToRow(obj) {
+    return [
+      obj.name,
+      obj.percentChange === "N/A" ? "N/A" : obj.price.toFixed(4),
+      obj.marketTime,
+      obj.netChange === "N/A" ? "N/A" : obj.netChange.toFixed(4),
+      obj.percentChange === "N/A" ? "N/A" : obj.percentChange.toFixed(4),
+    ];
+  }
+}
+
+// Grid End
+
+async function main() {
+	const indexes = ["SPX INDEX", "INDU INDEX", "NDX INDEX", "RTY INDEX", "NKY INDEX"];
+
+	const currency = ["CAD CURNCY", "JPY CURNCY", "EUR CURNCY", "GBP CURNCY", "ARS CURNCY"];
+
+	// let us instantiate the part of our JS that will control
+	// the data that is displayed in the our table
+	const control = new GridControl(indexes, currency);
+
+	const tokenFetcher = new JwtFetcher();
+	const activeToken = await tokenFetcher.getActiveToken();
+	// console.log("Token received!", activeToken);
+	// Once we have a token, we will be able to send it to our server,
+	// which will use it with blpapi to get us live data
+
+	// your actual server url may differ, it depends on where you are hosting the application
+	const socket = new WebSocket("ws://10.0.2.2:3000/live-data"); // this is for the Android virtual device, where the PC localhost will be 10.0.2.2 for the Android virtual device.
+
+	socket.addEventListener("open", (event) => {
+	  console.log("Server connection opened.");
+	  socket.send(activeToken);
+	});
+
+	socket.addEventListener("message", (event) => {
+	  try {
+		const json = JSON.parse(event.data);
+		console.log(json);
+		control.onUpdate(json);
+	  } catch (e) {
+		console.error("Unexpected response", event.data);
+		console.error(e);
+	  }
+	  /* Data represented by the following format:
+
+	  interface Update {
+		  indexes: Record<string, Delta>;
+		  currency: Record<string, Delta>;
+	  }
+
+	  where Record string may equal something like 'SPX INDEX'
+
+	  interface Delta {
+		  price: number;
+		  marketTime: string; // date string
+		  netChange: number;
+		  percentChange: number;
+	  }
+	*/
+	});
+}
+
+main();
+    </script>
+</html>
